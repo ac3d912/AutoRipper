@@ -1,10 +1,8 @@
 Autoripper
 ========================
-
-#######################################################################
 																	###
 		Project:	BluRay/DVD Ripper script
-		Developer:	Brandon Helms	(bhelms85@gmail.com
+		Developer:	Brandon Helms	(bhelms85@gmail.com)
 																	###
 		Notes:  This script will be able to detect when a drive
 			closes and will detect if there is a DVD or a Bluray
@@ -12,8 +10,8 @@ Autoripper
 			has already been ripped.  If not it will rip and then
 			convert to mkv
 																	###
-#######################################################################
+
 
 Version 0.0.1
 ==========================
-[+] Initial build
+[+] Initial build, not working just to get the code and idea out there.
