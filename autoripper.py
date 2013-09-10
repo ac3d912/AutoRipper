@@ -1,7 +1,6 @@
 
 import subprocess
 
-from time import sleep
 from glob import glob
 
 from autoripper_config import *
@@ -74,7 +73,7 @@ def cd_tray_watcher(cdTrayInfo): #done with initial dev
         tmp = subprocess.check_output([ 'udisks', '--show-info', BLURAY_DEVICE ])
         
         if not re.search('has media:\W+1',tmp): #Checks to see if drive is empty
-            sleep(5)    #This way we are not spiking CPU usage
+            sleep()    #This way we are not spiking CPU usage
             continue
         
         media['timeStamp'] = re.findall('has media:\W+\d\W(.*?)\n',tmp)[0]
@@ -82,11 +81,11 @@ def cd_tray_watcher(cdTrayInfo): #done with initial dev
         media['type'] = re.findall('\W\W+media:\W+(.*?)\n',tmp)[0]
         
         if not media['type'] in [ 'optical_bd', 'optical_dvd']:
-            sleep(5)    #This way we are not spiking CPU usage
+            sleep()    #This way we are not spiking CPU usage
             continue
         
         if timeStamp == media['timeStamp']:
-            sleep(5)    #This way we are not spiking CPU usage
+            sleep()    #This way we are not spiking CPU usage
             continue
         
         return media

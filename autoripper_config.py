@@ -25,6 +25,7 @@ list_of_bins = [ MAKEMKVCON, HANDBRAKE_CLI ]
 list_of_dirs = [ RIP_LOCATION, CONVERT_LOCATION, OUTPUT_MOVIE_LOCATION ]
 list_of_devs = [ BLURAY_DEVICE ]
 
+'''Functions to prevent operator error, hopefully'''
 def dirExist(listOfDirectories):
     for directory in ListOfDirectories:
         if not os.path.isdir(directory):
@@ -36,7 +37,12 @@ def pathExist(listOfPaths, isFile=True):
             if not isFile:
                 print 'Path does not exists for %s' % path
                 return False
-            
+
+'''Functions that make my life easier'''
+def sleep(seconds=5):
+    return time.sleep(seconds)
+    
+    
 dirExist(list_of_dirs)
 dirExist(MOVIE_LOCATION)
 
