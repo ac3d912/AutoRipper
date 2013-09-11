@@ -1,4 +1,7 @@
 import os
+from glob import glob
+
+HOME = os.path.expanduser('~')
 
 ##########################[ MODIFY THESE SETTINGS TO FIT YOUR SETUP ]####################################
 
@@ -8,9 +11,9 @@ HANDBRAKE_CLI = '/usr/bin/HandBrakeCLI'    #tested with 0.9.9
 
 
 #Variables that will reference Storage Locations
-RIP_LOCATION = r'/home/mediacenter/rips/'
-CONVERT_LOCATION = r'/home/mediacenter/converts/'
-OUTPUT_MOVIE_LOCATION = r'/home/mediacenter/exthdd1/Movies/'
+RIP_LOCATION = HOME + r'/rips/'
+CONVERT_LOCATION = HOME + r'/converts/'
+OUTPUT_MOVIE_LOCATION = HOME + r'/exthdd1/Movies/'
 MOVIE_LOCATION = [ OUTPUT_MOVIE_LOCATION ]    #This way if you have multiple locations it will check them all
 
 
@@ -18,6 +21,8 @@ MOVIE_LOCATION = [ OUTPUT_MOVIE_LOCATION ]    #This way if you have multiple loc
 BLURAY_DEVICE = r'/dev/sr0'                   #This should be the default location for your bluray device
 MAKEMKV_DISC_NUM = BLURAY_DEVICE[-1]          #This is the cdrom drive number
 
+#Variables that will reference misc software
+XBMC_MOVIE_DB = glob(HOME + r'/.xbmc/userdata/Database/MyVideos*.db')[0]
 
 ###############################[ DON'T EDIT ANYTHING BELOW THIS ]#########################################
 
@@ -47,7 +52,7 @@ dirExist(list_of_dirs)
 dirExist(MOVIE_LOCATION)
 
 if pathExist(list_of_bins) and pathExist(list_of-dirs):
-    continue
+    pass
 else:
     pass  #Need to find a clean way to bail
     

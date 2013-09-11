@@ -1,6 +1,7 @@
 
 import subprocess
 import os
+import sqlite3 as sql
 
 from glob import glob
 
@@ -49,7 +50,8 @@ def rip_with_makemkv(movieName):
         return False
     
     #To rip disk and eject once finished
-    if not subprocess.call([ MAKEMKVCON, '--minlength=%d' %settings['minLength'], '-r', '--decrypt', '--directio=%s' %settings['discAccess'], 'mkv', 'disc:%s' % MAKEMKV_DISC_NUM, 'all', RIP_LOCATION, ';', 'eject', '-r' ]):
+    if not subprocess.call([ MAKEMKVCON, '--minlength=%d' %settings['minLength'], '-r', '--decrypt', '--directio=%s' %settings['discAccess'], 'mkv', 
+                            'disc:%s' % MAKEMKV_DISC_NUM, 'all', RIP_LOCATION, ';', 'eject', '-r' ]):
         cleanup_bad_jobs()
         return False
     
@@ -60,10 +62,33 @@ def rip_with_makemkv(movieName):
     return movieLocation
     
     
-def check_if_owned(movieTitle): #Need help
-    '''[ TO DO ] Need to find out where xbmc is caching the metadata for the movies'''
-    pass
+def check_if_owned(movieLabel): #Need help
+    '''[ TO DO ] Need to find a way to take CDROM Label and scrap a site to get the movie title.'''
     
+    
+    ''' WILL NOT WORK UNTIL I FIGURE THIS PIECE OUT '''
+    
+    #Going to do a simple sql query for the Movie database in XBMC and comparing it to the title we have
+    con = sql.connect(XBMC_MOVIE_DB)
+    
+    cur = con.cursor()
+    cur.execute("SELECT c00 FROM movie")
+    movieList = cur.fetchall()
+    
+    found = False
+    
+    for movieTuple in movieList:
+        movie = movieTuple[0]
+        
+        if movieTitle == movie:
+            found = True
+            break
+    
+    cur.close()
+    con.close()
+    
+    return found
+        
     
 def cleanup_bad_jobs():
     dirsToCheck = [ RIP_LOCATION, CONVERT_LOCATION ] #May want to add other cleanup locations
@@ -83,7 +108,9 @@ def cd_tray_watcher(cdTrayInfo):
     
     media = {   'timeStamp'     :   None,
                 'label'         :   None,
-                'type'          :   None
+                'type'          :   None,
+                'serial'        :   None,
+                'by-id'         :   None
             }
     
     if cdTrayInfo is None:
@@ -99,9 +126,11 @@ def cd_tray_watcher(cdTrayInfo):
             continue
         
         '''[ TO DO ] Can clean the regex's up a lot to prevent having to use greedy flags, will do later'''
-        media['timeStamp'] = re.findall('has media:\W+\d\W(.*?)\n',tmp)[0]
-        media['label'] = re.findall('label:\W+(.*?)\n',tmp)[0]
-        media['type'] = re.findall('\W\W+media:\W+(.*?)\n',tmp)[0]
+        media['timeStamp'] = re.findall('has media:\W+\d\W(.*?)\n', tmp)[0]
+        media['label'] = re.findall('label:\W+(.*?)\n', tmp)[0]
+        media['type'] = re.findall('\W\W+media:\W+(.*?)\n', tmp)[0]
+        media['serial'] = re.findall('\W+serial:\W+(.*?)\n', tmp)[0]
+        media['by-id'] = re.findall('\W+by-id:\W+(.*?)\n', tmp)[0]
         
         if not media['type'] in [ 'optical_bd', 'optical_dvd']:
             sleep()    #This way we are not spiking CPU usage
