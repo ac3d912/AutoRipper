@@ -1,15 +1,36 @@
 
 import subprocess
+import os
 
 from glob import glob
 
 from autoripper_config import *
 
-def convert_with_handbrake(inFile): #Not started yet
-    pass
+def convert_with_handbrake(movieLocation):
+    '''
+        I figure you don't NEED this unless you want the compression factor.  DVD's will take a max of 9 gigs and since I am a quality whore
+        I am going to keep them as close to normal as possible.  Will leave an option for you to override if you feel like it.
+    '''
+    
+    settings = {    'input'         :   movieLocation,
+                    'output'        :   CONVERT_LOCATION + os.path.split(movieLocation)[-1],
+                    'backupAudio'   :   'ac3,dts,dtshd',
+                    'fallbackAudio' :   'ffac3',
+                    'videoEncode'   :   'x264',
+                    'videoQuality'  :   20,
+                    'advancedEncode':   'level=4.1:ref=4:b-adapt=2:direct=auto:me=umh:subq=8:rc-lookahead=50:psy-rd=1.0,0.15:deblock=-1,-1:vbv-bufsize=30000:vbv-maxrate=40000:slices=4'            
+               }
+    
+    if not subprocess.call([ HANDBRAKE_CLI, '-i', settings['input'], '-o', settings['output'], '-m', '-E', 'copy', '--audio-copy-mask', settings['backupAudio'], '--audio-fallback', 
+                     settings['fallbackAudio'], '-e', settings['videoEncode'], '-q', settings['videoQuality'], '-x', settings['advancedEncode']]):
+        return False
+    else:
+        os.remove(movieLocation)    #No need to keep the ripped version if this worked.
+    
+    return True
     
     
-def rip_with_makemkv(movieName): #Done with initial dev
+def rip_with_makemkv(movieName):
     '''
         I am going to make some assumptions for round 1.  I am going to assume you want an english only disk
         without subs.  I am going to remove all 3D and special tracks.
@@ -27,23 +48,24 @@ def rip_with_makemkv(movieName): #Done with initial dev
     if re.search('"Failed to open disc"', discInfo):
         return False
     
-    #TO rip disk and eject once finished
+    #To rip disk and eject once finished
     if not subprocess.call([ MAKEMKVCON, '--minlength=%d' %settings['minLength'], '-r', '--decrypt', '--directio=%s' %settings['discAccess'], 'mkv', 'disc:%s' % MAKEMKV_DISC_NUM, 'all', RIP_LOCATION, ';', 'eject', '-r' ]):
         cleanup_bad_jobs()
         return False
     
-    #Currently I am going to assume that the first track is the track we want, I will add better control once I figure out all the options to makemkvcon
+    '''[ TO DO ] Currently I am going to assume that the first track is the track we want, I will add better control once 
+    I figure out all the options to makemkvcon'''
     movieLocation = RIP_LOCATION + movieName + '.mkv'
     shutil.move(RIP_LOCATION + 'title00.mkv', movieLocation)
     return movieLocation
     
     
-def check_if_owned(movieName): #Need help
-    #Need to find out where xbmc is caching the metadata for the movies
+def check_if_owned(movieTitle): #Need help
+    '''[ TO DO ] Need to find out where xbmc is caching the metadata for the movies'''
     pass
     
     
-def cleanup_bad_jobs(): #done with initial dev
+def cleanup_bad_jobs():
     dirsToCheck = [ RIP_LOCATION, CONVERT_LOCATION ] #May want to add other cleanup locations
     
     for directory in dirsToCheck:
@@ -55,9 +77,9 @@ def cleanup_bad_jobs(): #done with initial dev
     return True
     
     
-def cd_tray_watcher(cdTrayInfo): #done with initial dev
+def cd_tray_watcher(cdTrayInfo):
     #This method will only work with linux.  Will use win32api for windows version
-    #better option would be to use udisks --monitor instead of blocking, need to see if I can get it to return once the drive has a disk in it
+    '''[ TO DO ] better option would be to use udisks --monitor instead of blocking, need to see if I can get it to return once the drive has a disk in it'''
     
     media = {   'timeStamp'     :   None,
                 'label'         :   None,
@@ -76,6 +98,7 @@ def cd_tray_watcher(cdTrayInfo): #done with initial dev
             sleep()    #This way we are not spiking CPU usage
             continue
         
+        '''[ TO DO ] Can clean the regex's up a lot to prevent having to use greedy flags, will do later'''
         media['timeStamp'] = re.findall('has media:\W+\d\W(.*?)\n',tmp)[0]
         media['label'] = re.findall('label:\W+(.*?)\n',tmp)[0]
         media['type'] = re.findall('\W\W+media:\W+(.*?)\n',tmp)[0]
@@ -91,7 +114,7 @@ def cd_tray_watcher(cdTrayInfo): #done with initial dev
         return media
         
     
-def program_watcher(): #done with initial dev
+def program_watcher(): 
     cdTrayInfo = None
 
     while True:  
@@ -121,5 +144,6 @@ if __name__ == '__main__':
     try:
         program_watcher()
     except:
-        cleanup_bad_jobs()
+        '''[ TO DO ] Clean up exception code correctly, will do this during testing phase'''
+        cleanup_bad_jobs() 
     
