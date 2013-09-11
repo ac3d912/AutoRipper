@@ -65,8 +65,9 @@ def rip_with_makemkv(movieName):
 def check_if_owned(movieLabel): #Need help
     '''[ TO DO ] Need to find a way to take CDROM Label and scrap a site to get the movie title.'''
     
+    return movieLabel    #Doing this to make it work until I figure out how to get a movie title from the disc.
     
-    ''' WILL NOT WORK UNTIL I FIGURE THIS PIECE OUT '''
+    '''Below this line works.  Will enable once I can find out how to get the movie title from the disc.'''
     
     #Going to do a simple sql query for the Movie database in XBMC and comparing it to the title we have
     con = sql.connect(XBMC_MOVIE_DB)
