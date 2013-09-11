@@ -12,6 +12,6 @@ Autoripper
 																	
 
 
-Version 0.0.1
+Version 0.1.0
 ==========================
-[+] Initial build, not working just to get the code and idea out there.
+[+] Initial working build, written strictly to work with python 2.7.  Next minor version will hopefully incorporate XBMC libraries

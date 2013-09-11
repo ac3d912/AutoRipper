@@ -1,7 +1,11 @@
+#!/usr/bin/python
 
 import subprocess
 import os
+import re
+import shutil
 import sqlite3 as sql
+import time
 
 from glob import glob
 
@@ -18,16 +22,15 @@ def convert_with_handbrake(movieLocation):
                     'backupAudio'   :   'ac3,dts,dtshd',
                     'fallbackAudio' :   'ffac3',
                     'videoEncode'   :   'x264',
-                    'videoQuality'  :   20,
+                    'videoQuality'  :   '20',
                     'advancedEncode':   'level=4.1:ref=4:b-adapt=2:direct=auto:me=umh:subq=8:rc-lookahead=50:psy-rd=1.0,0.15:deblock=-1,-1:vbv-bufsize=30000:vbv-maxrate=40000:slices=4'            
                }
     
-    if not subprocess.call([ HANDBRAKE_CLI, '-i', settings['input'], '-o', settings['output'], '-m', '-E', 'copy', '--audio-copy-mask', settings['backupAudio'], '--audio-fallback', 
-                     settings['fallbackAudio'], '-e', settings['videoEncode'], '-q', settings['videoQuality'], '-x', settings['advancedEncode']]):
-        return False
-    else:
-        os.remove(movieLocation)    #No need to keep the ripped version if this worked.
+    tmp =  subprocess.call([ HANDBRAKE_CLI, '-i', settings['input'], '-o', settings['output'], '-m', '-E', 'copy', '--audio-copy-mask', settings['backupAudio'], '--audio-fallback', settings['fallbackAudio'], '-e', settings['videoEncode'], '-q', settings['videoQuality'], '-x', settings['advancedEncode']], stdout=subprocess.PIPE)
     
+    if tmp == 0:
+        os.remove(movieLocation)    #No need to keep the ripped version if this worked.
+
     return True
     
     
@@ -42,29 +45,36 @@ def rip_with_makemkv(movieName):
                     'minLength'        :    3601,
                     'discAccess'       :    'true'  #examples are all lowercase
                 }
-                
+             
     #To get disk info
-    discInfo = subprocess.check_output([ MAKEMKVCON, '-r', 'info', 'disc:%s' % MAKEMKV_DISK_NUM ])
+    discInfo = subprocess.check_output([ MAKEMKVCON, '-r', 'info', 'disc:%s' % MAKEMKV_DISC_NUM ])
     
     if re.search('"Failed to open disc"', discInfo):
         return False
     
+    print '\tGot disc info'
     #To rip disk and eject once finished
-    if not subprocess.call([ MAKEMKVCON, '--minlength=%d' %settings['minLength'], '-r', '--decrypt', '--directio=%s' %settings['discAccess'], 'mkv', 
-                            'disc:%s' % MAKEMKV_DISC_NUM, 'all', RIP_LOCATION, ';', 'eject', '-r' ]):
+    
+    subprocess.call([ MAKEMKVCON, '--minlength=%d' %settings['minLength'], '-r', '--decrypt', '--directio=%s' %settings['discAccess'], 'mkv', 
+                            'disc:%s' % MAKEMKV_DISC_NUM, 'all', RIP_LOCATION], stdout=subprocess.PIPE)
+    
+    tmp = subprocess.call([ 'eject', '-s', BLURAY_DEVICE ])
+    
+    if tmp == 1:
         cleanup_bad_jobs()
         return False
-    
+
     '''[ TO DO ] Currently I am going to assume that the first track is the track we want, I will add better control once 
     I figure out all the options to makemkvcon'''
-    movieLocation = RIP_LOCATION + movieName + '.mkv'
-    shutil.move(RIP_LOCATION + 'title00.mkv', movieLocation)
-    return movieLocation
+    
+    ripMovieName = glob(RIP_LOCATION + '*t00.mkv')[0]
+    
+    return ripMovieName
     
     
 def check_if_owned(movieLabel): #Need help
     '''[ TO DO ] Need to find a way to take CDROM Label and scrap a site to get the movie title.'''
-    
+
     return movieLabel    #Doing this to make it work until I figure out how to get a movie title from the disc.
     
     '''Below this line works.  Will enable once I can find out how to get the movie title from the disc.'''
@@ -93,32 +103,29 @@ def check_if_owned(movieLabel): #Need help
     
 def cleanup_bad_jobs():
     dirsToCheck = [ RIP_LOCATION, CONVERT_LOCATION ] #May want to add other cleanup locations
-    
+
     for directory in dirsToCheck:
         filesToDelete = [ f for f in os.listdir(directory) ]
     
-        for files in filesToDelete:
-            os.remove(files)
-            
+        for file in filesToDelete:
+            os.remove(directory + file)
+    
     return True
     
     
 def cd_tray_watcher(cdTrayInfo):
-    #This method will only work with linux.  Will use win32api for windows version
-    '''[ TO DO ] better option would be to use udisks --monitor instead of blocking, need to see if I can get it to return once the drive has a disk in it'''
-    
     media = {   'timeStamp'     :   None,
                 'label'         :   None,
                 'type'          :   None,
                 'serial'        :   None,
                 'by-id'         :   None
             }
-    
+            
     if cdTrayInfo is None:
         timeStamp = None
     else:
-        timeStamp = cdTrayInfo['timeStamp']
-        
+        timeStamp = cdTrayInfo
+    
     while True:
         tmp = subprocess.check_output([ 'udisks', '--show-info', BLURAY_DEVICE ])
         
@@ -146,36 +153,35 @@ def cd_tray_watcher(cdTrayInfo):
     
 def program_watcher(): 
     cdTrayInfo = None
-
-    while True:  
-        cleanup_bad_job()  
+    
+    while True: 
+        cleanup_bad_jobs()  
         movieInfo = cd_tray_watcher(cdTrayInfo)
+        cdTrayInfo = movieInfo['timeStamp']
         
-        if check_if_owned(movieInfo['label']):
+        if not check_if_owned(movieInfo['label']):
             continue
         
         mkvMoviePath = rip_with_makemkv(movieInfo['label'])
-            
+        
         if not mkvMoviePath:
             continue
         
         if movieInfo['type'] == 'optical_bd' :
-            moviePath = convert_with_handbrake(movieInfo, mkvMoviePath)
+            moviePath = convert_with_handbrake(mkvMoviePath)
             
             if not moviePath:
                 shutil.move(moviePath, OUTPUT_MOVIE_LOCATION)
         
         else:
             shutil.move(mkvMoviePath, OUTPUT_MOVIE_LOCATION)
-    
+        
 
 if __name__ == '__main__':
-    if pathExist(list_of_bins) and pathExist(list_of-dirs):
-        try:
-            program_watcher()
-        except:
-            '''[ TO DO ] Clean up exception code correctly, will do this during testing phase'''
-            cleanup_bad_jobs() 
+    if pathExist(list_of_bins) and pathExist(list_of_dirs):
+        program_watcher()
+        
     else:
         print 'failed to find paths.  Please check autoripper_config to make sure things are set correctly.'
     
+

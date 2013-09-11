@@ -1,4 +1,7 @@
+#!/usr/bin/python
+
 import os
+import time
 from glob import glob
 
 HOME = os.path.expanduser('~')
@@ -11,8 +14,8 @@ HANDBRAKE_CLI = '/usr/bin/HandBrakeCLI'    #tested with 0.9.9
 
 
 #Variables that will reference Storage Locations
-RIP_LOCATION = HOME + r'/rips/'
-CONVERT_LOCATION = HOME + r'/converts/'
+RIP_LOCATION = HOME + r'/exthdd2/autoripper/rips/'
+CONVERT_LOCATION = HOME + r'/exthdd2/autoripper/converts/'
 OUTPUT_MOVIE_LOCATION = HOME + r'/exthdd1/Movies/'
 MOVIE_LOCATION = [ OUTPUT_MOVIE_LOCATION ]    #This way if you have multiple locations it will check them all
 
@@ -32,7 +35,7 @@ list_of_devs = [ BLURAY_DEVICE ]
 
 '''Functions to prevent operator error, hopefully'''
 def dirExist(listOfDirectories):
-    for directory in ListOfDirectories:
+    for directory in listOfDirectories:
         if not os.path.isdir(directory):
             os.makedirs(directory)
 
@@ -42,6 +45,7 @@ def pathExist(listOfPaths, isFile=True):
             if not isFile:
                 print 'Path does not exists for %s' % path
                 return False
+    return True
 
 '''Functions that make my life easier'''
 def sleep(seconds=5):
@@ -52,3 +56,4 @@ dirExist(list_of_dirs)
 dirExist(MOVIE_LOCATION)
 
     
+
