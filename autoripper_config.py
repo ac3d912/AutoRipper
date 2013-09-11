@@ -51,8 +51,4 @@ def sleep(seconds=5):
 dirExist(list_of_dirs)
 dirExist(MOVIE_LOCATION)
 
-if pathExist(list_of_bins) and pathExist(list_of-dirs):
-    pass
-else:
-    pass  #Need to find a clean way to bail
     

@@ -170,10 +170,12 @@ def program_watcher():
     
 
 if __name__ == '__main__':
-    
-    try:
-        program_watcher()
-    except:
-        '''[ TO DO ] Clean up exception code correctly, will do this during testing phase'''
-        cleanup_bad_jobs() 
+    if pathExist(list_of_bins) and pathExist(list_of-dirs):
+        try:
+            program_watcher()
+        except:
+            '''[ TO DO ] Clean up exception code correctly, will do this during testing phase'''
+            cleanup_bad_jobs() 
+    else:
+        print 'failed to find paths.  Please check autoripper_config to make sure things are set correctly.'
     
