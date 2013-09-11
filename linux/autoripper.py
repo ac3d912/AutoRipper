@@ -9,7 +9,7 @@ import time
 
 from glob import glob
 
-from autoripper_config import *
+from resources.lib.autoripper_config import *
 
 def convert_with_handbrake(movieLocation):
     '''
