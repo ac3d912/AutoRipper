@@ -77,7 +77,7 @@ def movieTime(code, name=None):
             diffTime = stopTime - startTime
             convertToMins = diffTime / 60
             
-            results = 'Time to process %.2f' %convertToMins
+            results = 'Time to process %.2f mins' %convertToMins
             
             if name is not None:
                 results += ' with %s' %name

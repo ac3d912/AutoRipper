@@ -46,7 +46,9 @@ def convert_with_handbrake(movieLocation):
 
     
     movieTime(0)
-    tmp =  subprocess.call([ HANDBRAKE_CLI, '-i', settings['input'], '-o', settings['output'], '--markers', '--audio', settings['audioTrack'], '--aencoder', 'copy', '--audio-copy-mask', settings['backupAudio'], '--audio-fallback', settings['fallbackAudio'], '--encoder', settings['videoEncode'], '--x264-profile', settings['x264-profile'], '--two-pass', '--turbo']) #, stdout=subprocess.PIPE)
+    tmp =  subprocess.call([ HANDBRAKE_CLI, '-i', settings['input'], '-o', settings['output'], '--markers', '--audio', settings['audioTrack'], 
+                            '--aencoder', 'copy', '--audio-copy-mask', settings['backupAudio'], '--audio-fallback', settings['fallbackAudio'], 
+                            '--encoder', settings['videoEncode'], '--x264-profile', settings['x264-profile'], '--two-pass', '--turbo'], stdout=subprocess.PIPE)
     
     if tmp == 0:
         os.remove(movieLocation)    #No need to keep the ripped version if this worked.
@@ -67,7 +69,6 @@ def rip_with_makemkv(movieName):
     '''
     
     settings = {    'cache'            :    1024,
-                    'audioSettings'    :    '-sel:all,+sel:audio&(eng),-sel:(havemulti),-sel:mvcvideo,-sel:special,+sel:lossless', #dont know how to implement this one yet
                     'minLength'        :    3601,
                     'discAccess'       :    'true'  #examples are all lowercase
                 }
