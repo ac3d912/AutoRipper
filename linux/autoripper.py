@@ -47,7 +47,7 @@ def convert_with_handbrake(movieLocation):
     movieTime(0)
     tmp =  subprocess.call([ HANDBRAKE_CLI, '-i', settings['input'], '-o', settings['output'], '--markers', '--audio', settings['audioTrack'], 
                             '--aencoder', 'copy', '--audio-copy-mask', settings['backupAudio'], '--audio-fallback', settings['fallbackAudio'], 
-                            '--encoder', settings['videoEncode'], '--x264-profile', settings['x264-profile'], '--two-pass', '--turbo'], stdout=subprocess.PIPE)
+                            '--encoder', settings['videoEncode'], '--x264-profile', settings['x264-profile'], '--two-pass', '--turbo'])
     
     if tmp == 0:
         os.remove(movieLocation)    #No need to keep the ripped version if this worked.
@@ -205,8 +205,8 @@ def program_watcher():
             continue
         
         getMovieName = os.path.split(moviePath)[-1]
-        outputMoviePath = re.sub('_', '.', getMovieName[:8] + 'Cr0n1c' +getMovieName[-4:])
-        shutil.move(moviePath, OUTPUT_MOVIE_LOCATION + getMovieName)
+        outputMoviePath = re.sub('_', '.', getMovieName[:-8] + 'Cr0n1c' +getMovieName[-4:])
+        shutil.move(moviePath, OUTPUT_MOVIE_LOCATION + outputMoviePath)
         disk_already_checked(movieInfo['label'], False)
 
 
@@ -218,4 +218,3 @@ if __name__ == '__main__':
     else:
         dbWrite('failed to find paths.  Please check autoripper_config to make sure things are set correctly.', True)
     
-
