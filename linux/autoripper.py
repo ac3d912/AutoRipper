@@ -8,9 +8,25 @@ import sqlite3 as sql
 import time
 
 from glob import glob
-
+import resourece.lib
 from resources.lib.autoripper_config import *
 
+sqlList = []
+
+def disk_already_checked(diskLabel, checkOnly=True):
+    global sqlList
+    
+    if diskLabel in sqlList:
+        return True
+    else:
+        
+        if not checkOnly:
+            dbWrite('Adding %s to database' %diskLabel)
+            sqlList.append(diskLabel)
+        
+        return False
+   
+   
 def convert_with_handbrake(movieLocation):
     '''
         I figure you don't NEED this unless you want the compression factor.  DVD's will take a max of 9 gigs and since I am a quality whore
@@ -23,15 +39,25 @@ def convert_with_handbrake(movieLocation):
                     'fallbackAudio' :   'ffac3',
                     'videoEncode'   :   'x264',
                     'videoQuality'  :   '20',
-                    'advancedEncode':   'level=4.1:ref=4:b-adapt=2:direct=auto:me=umh:subq=8:rc-lookahead=50:psy-rd=1.0,0.15:deblock=-1,-1:vbv-bufsize=30000:vbv-maxrate=40000:slices=4'            
+                    'advancedEncode':   'level=4.1',
+                    'audioTrack'    :   '1',
+                    'x264-profile'  :   'high'
                }
+
     
-    tmp =  subprocess.call([ HANDBRAKE_CLI, '-i', settings['input'], '-o', settings['output'], '-m', '-E', 'copy', '--audio-copy-mask', settings['backupAudio'], '--audio-fallback', settings['fallbackAudio'], '-e', settings['videoEncode'], '-q', settings['videoQuality'], '-x', settings['advancedEncode']], stdout=subprocess.PIPE)
+    movieTime(0)
+    tmp =  subprocess.call([ HANDBRAKE_CLI, '-i', settings['input'], '-o', settings['output'], '--markers', '--audio', settings['audioTrack'], '--aencoder', 'copy', '--audio-copy-mask', settings['backupAudio'], '--audio-fallback', settings['fallbackAudio'], '--encoder', settings['videoEncode'], '--x264-profile', settings['x264-profile'], '--two-pass', '--turbo']) #, stdout=subprocess.PIPE)
     
     if tmp == 0:
         os.remove(movieLocation)    #No need to keep the ripped version if this worked.
-
-    return True
+    else:
+        dbWrite('Failed to convert via handbrake', True)
+        return False
+    
+    movieTime(1)
+    dbWrite(movieTime(2, 'handbrake'))
+    
+    return CONVERT_LOCATION + os.path.split(movieLocation)[-1]
     
     
 def rip_with_makemkv(movieName):
@@ -39,7 +65,7 @@ def rip_with_makemkv(movieName):
         I am going to make some assumptions for round 1.  I am going to assume you want an english only disk
         without subs.  I am going to remove all 3D and special tracks.
     '''
-
+    
     settings = {    'cache'            :    1024,
                     'audioSettings'    :    '-sel:all,+sel:audio&(eng),-sel:(havemulti),-sel:mvcvideo,-sel:special,+sel:lossless', #dont know how to implement this one yet
                     'minLength'        :    3601,
@@ -52,21 +78,21 @@ def rip_with_makemkv(movieName):
     if re.search('"Failed to open disc"', discInfo):
         return False
     
-    print '\tGot disc info'
     #To rip disk and eject once finished
-    
+    movieTime(0)
     subprocess.call([ MAKEMKVCON, '--minlength=%d' %settings['minLength'], '-r', '--decrypt', '--directio=%s' %settings['discAccess'], 'mkv', 
                             'disc:%s' % MAKEMKV_DISC_NUM, 'all', RIP_LOCATION], stdout=subprocess.PIPE)
-    
+    movieTime(1)
+    dbWrite(movieTime(2, 'makemkv'))
     tmp = subprocess.call([ 'eject', '-s', BLURAY_DEVICE ])
     
     if tmp == 1:
-        cleanup_bad_jobs()
+        dbWrite('Failed to rip with makemkv', True)
         return False
-
+        
     '''[ TO DO ] Currently I am going to assume that the first track is the track we want, I will add better control once 
     I figure out all the options to makemkvcon'''
-    
+   
     ripMovieName = glob(RIP_LOCATION + '*t00.mkv')[0]
     
     return ripMovieName
@@ -74,7 +100,6 @@ def rip_with_makemkv(movieName):
     
 def check_if_owned(movieLabel): #Need help
     '''[ TO DO ] Need to find a way to take CDROM Label and scrap a site to get the movie title.'''
-
     return movieLabel    #Doing this to make it work until I figure out how to get a movie title from the disc.
     
     '''Below this line works.  Will enable once I can find out how to get the movie title from the disc.'''
@@ -103,17 +128,19 @@ def check_if_owned(movieLabel): #Need help
     
 def cleanup_bad_jobs():
     dirsToCheck = [ RIP_LOCATION, CONVERT_LOCATION ] #May want to add other cleanup locations
-
     for directory in dirsToCheck:
         filesToDelete = [ f for f in os.listdir(directory) ]
     
         for file in filesToDelete:
+            dbWrite('Deleting ' + directory + file)
             os.remove(directory + file)
     
     return True
     
     
 def cd_tray_watcher(cdTrayInfo):
+    '''[ TO DO ] better option would be to use udisks --monitor instead of blocking, need to see if I can get it to return once the drive has a disk in it'''
+
     media = {   'timeStamp'     :   None,
                 'label'         :   None,
                 'type'          :   None,
@@ -154,10 +181,15 @@ def cd_tray_watcher(cdTrayInfo):
 def program_watcher(): 
     cdTrayInfo = None
     
+    dbWrite('Starting watcher')
     while True: 
+        
         cleanup_bad_jobs()  
         movieInfo = cd_tray_watcher(cdTrayInfo)
         cdTrayInfo = movieInfo['timeStamp']
+        
+        if disk_already_checked(movieInfo['label']):
+            continue
         
         if not check_if_owned(movieInfo['label']):
             continue
@@ -167,21 +199,23 @@ def program_watcher():
         if not mkvMoviePath:
             continue
         
-        if movieInfo['type'] == 'optical_bd' :
-            moviePath = convert_with_handbrake(mkvMoviePath)
-            
-            if not moviePath:
-                shutil.move(moviePath, OUTPUT_MOVIE_LOCATION)
+        moviePath = convert_with_handbrake(mkvMoviePath)
         
-        else:
-            shutil.move(mkvMoviePath, OUTPUT_MOVIE_LOCATION)
+        if not moviePath:
+            continue
         
+        outputMoviePath = re.sub('_', '.', moviePath[:8] + 'Cr0n1c' +moviePath[-4:])
+        
+        shutil.move(moviePath, OUTPUT_MOVIE_LOCATION + outputMoviePath)
+        disk_already_checked(movieInfo['label'], False)
+
 
 if __name__ == '__main__':
+    
     if pathExist(list_of_bins) and pathExist(list_of_dirs):
         program_watcher()
         
     else:
-        print 'failed to find paths.  Please check autoripper_config to make sure things are set correctly.'
+        dbWrite('failed to find paths.  Please check autoripper_config to make sure things are set correctly.', True)
     
 

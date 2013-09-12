@@ -1,0 +1,24 @@
+Autoripper
+========================
+                                                                    
+        Project:    BluRay/DVD Ripper script
+        Developer:  Brandon Helms   (bhelms85@gmail.com)
+                                                                    
+        Notes:  This script will be able to detect when a drive
+            closes and will detect if there is a DVD or a Bluray
+            is inserted.  Then it will check to see if the movie
+            has already been ripped.  If not it will rip and then
+            convert to mkv
+                                                                    
+
+Version 0.1.1
+==========================
+[+] Added handbrake ripping for DVD as well
+[+] Added sqlDB to store rips, haven't implemented yet
+[+] Added moveTime function for ripping purposes
+[+] Moved everything to a xbmc standard formating scheme
+[+] Fixed misc bugs.
+
+Version 0.1.0
+==========================
+[+] Initial working build, written strictly to work with python 2.7.  

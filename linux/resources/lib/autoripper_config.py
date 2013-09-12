@@ -33,6 +33,8 @@ list_of_bins = [ MAKEMKVCON, HANDBRAKE_CLI ]
 list_of_dirs = [ RIP_LOCATION, CONVERT_LOCATION, OUTPUT_MOVIE_LOCATION ]
 list_of_devs = [ BLURAY_DEVICE ]
 
+timeStamp = []
+
 '''Functions to prevent operator error, hopefully'''
 def dirExist(listOfDirectories):
     for directory in listOfDirectories:
@@ -51,9 +53,37 @@ def pathExist(listOfPaths, isFile=True):
 def sleep(seconds=5):
     return time.sleep(seconds)
     
+def dbWrite(msg, error=False):
+    print (msg)
     
+def movieTime(code, name=None):
+    #0 start
+    #1 means stop
+    #2 means print dif
+    global timeStamp
+    
+    if code == 0: #start
+        timeStamp = [time.time()]   
+    elif code == 1: #stop
+        if len(timeStamp) == 1:
+            timeStamp.append(time.time())
+        else:
+            return False
+    elif code == 2: #print
+        if len(timeStamp) == 2:
+            startTime = timeStamp[0]
+            stopTime = timeStamp[1]
+            
+            diffTime = stopTime - startTime
+            convertToMins = diffTime / 60
+            
+            results = 'Time to process %.2f' %convertToMins
+            
+            if name is not None:
+                results += ' with %s' %name
+            
+            return results
+        
+         
 dirExist(list_of_dirs)
 dirExist(MOVIE_LOCATION)
-
-    
-

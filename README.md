@@ -10,8 +10,3 @@ Autoripper
 			has already been ripped.  If not it will rip and then
 			convert to mkv
 																	
-
-
-Version 0.1.0
-==========================
-[+] Initial working build, written strictly to work with python 2.7.  Next minor version will hopefully incorporate XBMC libraries
