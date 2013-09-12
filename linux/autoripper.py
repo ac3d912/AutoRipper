@@ -8,7 +8,6 @@ import sqlite3 as sql
 import time
 
 from glob import glob
-import resourece.lib
 from resources.lib.autoripper_config import *
 
 sqlList = []
@@ -205,9 +204,9 @@ def program_watcher():
         if not moviePath:
             continue
         
-        outputMoviePath = re.sub('_', '.', moviePath[:8] + 'Cr0n1c' +moviePath[-4:])
-        
-        shutil.move(moviePath, OUTPUT_MOVIE_LOCATION + outputMoviePath)
+        getMovieName = os.path.split(moviePath)[-1]
+        outputMoviePath = re.sub('_', '.', getMovieName[:8] + 'Cr0n1c' +getMovieName[-4:])
+        shutil.move(moviePath, OUTPUT_MOVIE_LOCATION + getMovieName)
         disk_already_checked(movieInfo['label'], False)
 
 
