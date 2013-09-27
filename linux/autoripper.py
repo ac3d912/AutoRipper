@@ -1,14 +1,18 @@
 #!/usr/bin/python
 
 import subprocess
-import os
+import os.path
 import re
 import shutil
 import sqlite3 as sql
-import time
+import dbus
+import gobject
 
 from glob import glob
 from resources.lib.autoripper_config import *
+from dbus.mainloop.glib import DBusGMainLoop
+
+DBusGMainLoop(set_as_default=True)
 
 sqlList = []
 
@@ -74,6 +78,7 @@ def rip_with_makemkv(movieName):
              
     #To get disk info
     discInfo = subprocess.check_output([ MAKEMKVCON, '-r', 'info', 'disc:%s' % MAKEMKV_DISC_NUM ])
+    print discInfo
     
     if re.search('"Failed to open disc"', discInfo):
         return False
@@ -116,7 +121,7 @@ def check_if_owned(movieLabel): #Need help
     for movieTuple in movieList:
         movie = movieTuple[0]
         
-        if movieTitle == movie:
+        if movieLabel == movie:
             found = True
             break
     
@@ -131,84 +136,95 @@ def cleanup_bad_jobs():
     for directory in dirsToCheck:
         filesToDelete = [ f for f in os.listdir(directory) ]
     
-        for file in filesToDelete:
-            dbWrite('Deleting ' + directory + file)
-            os.remove(directory + file)
+        for file_name in filesToDelete:
+            dbWrite('Deleting ' + directory + file_name)
+            os.remove(directory + file_name)
     
     return True
-    
-    
-def cd_tray_watcher(cdTrayInfo):
-    '''[ TO DO ] better option would be to use udisks --monitor instead of blocking, need to see if I can get it to return once the drive has a disk in it'''
 
+def cd_tray_watcher_dbus():    
+    bus = dbus.SystemBus()
+    bus.add_signal_receiver(cd_tray_media_changed, 'DeviceChanged', 'org.freedesktop.UDisks', path='/org/freedesktop/UDisks')
+    print "Added signal receiver"
+    #DriveEject (in'as'options)
+
+def get_udisk_property(device,prop):
+    '''
+    @param device: a dbus proxy object pointing to org.freedesktop.UDisks
+        disk = bus.get_object('org.freedesktop.UDisks','/org/freedesktop/devices/sr0')
+    '''
+    return device.Get('org.freedesktop.UDisks.Device',prop,dbus_interface='org.freedesktop.DBus.Properties')    
+
+def cd_tray_media_changed(device):
+    '''
+    @summary: Called by cd_tray_watcher_dbus when the DeviceChanged signal is received 
+    @param device: A device object -- http://udisks.freedesktop.org/docs/1.0.5/Device.html 
+    '''
+    print "CD Tray changed!"
+    print device
+    if device != '/org/freedesktop/UDisks/devices/sr0':
+        print "Not the Optical Drive"
+        return
+    
+    bus = dbus.SystemBus()
+    disk = bus.get_object('org.freedesktop.UDisks',device)
     media = {   'timeStamp'     :   None,
                 'label'         :   None,
                 'type'          :   None,
                 'serial'        :   None,
                 'by-id'         :   None
             }
-            
-    if cdTrayInfo is None:
-        timeStamp = None
-    else:
-        timeStamp = cdTrayInfo
     
-    while True:
-        tmp = subprocess.check_output([ 'udisks', '--show-info', BLURAY_DEVICE ])
-        
-        if not re.search('has media:\W+1',tmp): #Checks to see if drive is empty
-            sleep()    #This way we are not spiking CPU usage
-            continue
-        
-        '''[ TO DO ] Can clean the regex's up a lot to prevent having to use greedy flags, will do later'''
-        media['timeStamp'] = re.findall('has media:\W+\d\W(.*?)\n', tmp)[0]
-        media['label'] = re.findall('label:\W+(.*?)\n', tmp)[0]
-        media['type'] = re.findall('\W\W+media:\W+(.*?)\n', tmp)[0]
-        media['serial'] = re.findall('\W+serial:\W+(.*?)\n', tmp)[0]
-        media['by-id'] = re.findall('\W+by-id:\W+(.*?)\n', tmp)[0]
-        
-        if not media['type'] in [ 'optical_bd', 'optical_dvd']:
-            sleep()    #This way we are not spiking CPU usage
-            continue
-        
-        if timeStamp == media['timeStamp']:
-            sleep()    #This way we are not spiking CPU usage
-            continue
-        
-        return media
-        
+    media['timeStamp'] = get_udisk_property(disk, 'DeviceMediaDetectionTime')
+    print media['timeStamp']
+    if media['timeStamp'] == 0:
+        #This will be 0 if there is no media on the device
+        print "Empty Drive!"
+        return False
     
-def program_watcher(): 
-    cdTrayInfo = None
+    media['label'] = get_udisk_property(disk, 'IdLabel')
+    media['type'] = get_udisk_property(disk, 'DriveMedia')
+    media['serial'] = get_udisk_property(disk, 'DriveSerial')
+    media['by-id'] = get_udisk_property(disk, 'DeviceFileById')
     
-    dbWrite('Starting watcher')
-    while True: 
-        
-        cleanup_bad_jobs()  
-        movieInfo = cd_tray_watcher(cdTrayInfo)
-        cdTrayInfo = movieInfo['timeStamp']
-        
-        if disk_already_checked(movieInfo['label']):
-            continue
-        
-        if not check_if_owned(movieInfo['label']):
-            continue
-        
-        mkvMoviePath = rip_with_makemkv(movieInfo['label'])
-        
-        if not mkvMoviePath:
-            continue
-        
-        moviePath = convert_with_handbrake(mkvMoviePath)
-        
-        if not moviePath:
-            continue
-        
-        getMovieName = os.path.split(moviePath)[-1]
-        outputMoviePath = re.sub('_', '.', getMovieName[:-8] + 'Cr0n1c' +getMovieName[-4:])
-        shutil.move(moviePath, OUTPUT_MOVIE_LOCATION + outputMoviePath)
-        disk_already_checked(movieInfo['label'], False)
+    print media
+    if disk_already_checked(media['label']):
+        print "Already Checked"
+        return
+    
+    if not check_if_owned(media['label']):
+        print "Already Owned"
+        return
+    
+    print "Ripping"
+    mkvMoviePath = rip_with_makemkv(media['label'])
+    
+    if not mkvMoviePath:
+        print "Rip failed"
+        return
+    
+    print "Converting"
+    moviePath = convert_with_handbrake(mkvMoviePath)
+    
+    if not moviePath:
+        print "Converting failed"
+        return
+    
+    print "Moving"
+    getMovieName = os.path.split(moviePath)[-1]
+    outputMoviePath = re.sub('_', '.', getMovieName[:-8] + 'Cr0n1c' +getMovieName[-4:])
+    shutil.move(moviePath, os.path.join(OUTPUT_MOVIE_LOCATION, outputMoviePath))
+    disk_already_checked(media['label'], False)
+    print "Done with %s" % getMovieName 
 
+
+def program_watcher(): 
+    dbWrite('Starting watcher')
+    cd_tray_watcher_dbus()
+    
+    loop = gobject.MainLoop()
+    loop.run()
+    cleanup_bad_jobs()
 
 if __name__ == '__main__':
     
